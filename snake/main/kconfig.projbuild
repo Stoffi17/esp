@@ -1,0 +1,54 @@
+menu "Snake Configuration"
+
+    config BTN1_GPIO
+        int "Left Button GPIO"
+        default 9
+        help
+            GPIO number for the left Button.
+
+    config BTN2_GPIO
+        int "Right Button GPIO"
+        default 2
+        help
+            GPIO number for the right Button and Potentiometer.
+
+    config LED_STRIP_GPIO
+        int "LED Strip GPIO number"
+        default 8
+        help
+            GPIO number used to control the addressable LED strip. Make sure this matches your hardware setup.
+
+    config LED_COUNT
+        int "Number of LEDs in the strip"
+        default 25
+        help
+            Define the number of LEDs in the addressable LED strip.
+
+    choice LED_STRIP_BACKEND
+        prompt "LED Strip Backend Peripheral"
+        default LED_STRIP_BACKEND_RMT if SOC_RMT_SUPPORTED
+        default LED_STRIP_BACKEND_SPI
+        help
+            Select the backend peripheral to drive the LED strip. Choose RMT if supported by your ESP32 chip, otherwise SPI.
+
+        config LED_STRIP_BACKEND_RMT
+            depends on SOC_RMT_SUPPORTED
+            bool "RMT"
+            help
+                Use the RMT peripheral to drive the LED strip. This is a common method for driving addressable LEDs.
+
+        config LED_STRIP_BACKEND_SPI
+            bool "SPI"
+            help
+                Use the SPI peripheral to drive the LED strip. Suitable for specific LED types that support SPI communication.
+
+    endchoice
+
+    config BLINK_PERIOD
+        int "Blink period in ms"
+        range 10 3600000
+        default 1000
+        help
+            Define the blinking period in milliseconds.
+
+endmenu
