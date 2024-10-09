@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "snake",
-    "project_version":    "1685e24-dirty",
+    "project_version":    "59128edc-dirty",
     "project_path":       "C:/projects/esp/snake",
     "idf_path":           "C:/Users/Dkzfz/esp/v5.3.1/esp-idf",
     "build_dir":          "C:/projects/esp/snake/build",

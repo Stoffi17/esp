@@ -5565,6 +5565,26 @@
                 ],
                 "title": "Blink period in ms",
                 "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO the left Button is connected to.",
+                "id": "BUTTON1_GPIO",
+                "name": "BUTTON1_GPIO",
+                "range": null,
+                "title": "Button GPIO",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO the right Button is connected to.",
+                "id": "BUTTON2_GPIO",
+                "name": "BUTTON2_GPIO",
+                "range": null,
+                "title": "Button GPIO",
+                "type": "int"
             }
         ],
         "depends_on": null,

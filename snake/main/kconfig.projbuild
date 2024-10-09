@@ -46,4 +46,16 @@ menu "Example Configuration"
         help
             Define the blinking period in milliseconds.
 
+    config BUTTON1_GPIO
+        int "Button GPIO"
+        default 9
+        help
+            GPIO the left Button is connected to.
+
+    config BUTTON2_GPIO
+        int "Button GPIO"
+        default 2
+        help
+            GPIO the right Button is connected to.
+
 endmenu

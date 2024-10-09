@@ -65,6 +65,8 @@
     "BOOT_ROM_LOG_ON_GPIO_LOW": false,
     "BT_ALARM_MAX_NUM": 50,
     "BT_ENABLED": false,
+    "BUTTON1_GPIO": 9,
+    "BUTTON2_GPIO": 2,
     "COMPILER_CXX_EXCEPTIONS": false,
     "COMPILER_CXX_RTTI": false,
     "COMPILER_DISABLE_GCC12_WARNINGS": false,

@@ -14,39 +14,40 @@
 #include "led_strip.h"
 #include "sdkconfig.h"
 
-static const char *TAG = "example";
-
-/* Use project configuration menu (idf.py menuconfig) to choose the GPIO to blink,
-   or you can edit the following line and set a number here.
-*/
-#define BLINK_GPIO CONFIG_BLINK_GPIO
-
-static uint8_t s_led_state = 0;
-
-#ifdef CONFIG_BLINK_LED_STRIP
-
+static const char *TAG = "snake_game";
 static led_strip_handle_t led_strip;
 
-static void blink_led(void)
-{
-    /* If the addressable LED is enabled */
-    if (s_led_state) {
-        /* Set the LED pixel using RGB from 0 (0%) to 255 (100%) for each color */
-        led_strip_set_pixel(led_strip, 0, 16, 16, 16);
-        /* Refresh the strip to send data */
-        led_strip_refresh(led_strip);
-    } else {
-        /* Set all LED off to clear all pixels */
-        led_strip_clear(led_strip);
-    }
-}
+#define GRID_SIZE 25
+#define GRID_ROWS 5
+#define GRID_COLS 5
+#define INITIAL_SNAKE_LENGTH 2
 
-static void configure_led(void)
+typedef enum { UP, DOWN, LEFT, RIGHT } direction_t;
+
+typedef struct {
+    int body[GRID_SIZE];
+    int length;
+    direction_t direction;
+} snake_t;
+
+snake_t snake;
+int food_position = -1;
+
+void configure_led_strip(void);
+void configure_buttons(void);
+void init_snake(void);
+void place_food(void);
+void update_leds(void);
+void move_snake(void);
+void change_direction(direction_t turn);
+bool is_collision(int new_head);
+
+void configure_led(void)
 {
-    ESP_LOGI(TAG, "Example configured to blink addressable LED!");
+    ESP_LOGI(TAG, "Configuring LEDs...");
     /* LED strip initialization with the GPIO and pixels number*/
     led_strip_config_t strip_config = {
-        .strip_gpio_num = BLINK_GPIO,
+        .strip_gpio_num = CONFIG_BLINK_GPIO,
         .max_leds = 1, // at least one LED on board
     };
 #if CONFIG_BLINK_LED_STRIP_BACKEND_RMT
@@ -68,37 +69,166 @@ static void configure_led(void)
     led_strip_clear(led_strip);
 }
 
-#elif CONFIG_BLINK_LED_GPIO
-
-static void blink_led(void)
+void configure_buttons(void)
 {
-    /* Set the GPIO level according to the state (LOW or HIGH)*/
-    gpio_set_level(BLINK_GPIO, s_led_state);
+    ESP_LOGI(TAG, "Configuring Buttons...");
+    // GPIO-Konfiguration für Button 1
+    gpio_config_t gpioConfigBtn1 = {
+        .pin_bit_mask = (1 << CONFIG_BUTTON1_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&gpioConfigBtn1);
+
+    // GPIO-Konfiguration für Button 2
+    gpio_config_t gpioConfigBtn2 = {
+        .pin_bit_mask = (1 << CONFIG_BUTTON2_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&gpioConfigBtn2);
 }
 
-static void configure_led(void)
+void init_snake(void)
 {
-    ESP_LOGI(TAG, "Example configured to blink GPIO LED!");
-    gpio_reset_pin(BLINK_GPIO);
-    /* Set the GPIO as a push/pull output */
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    ESP_LOGI(TAG, "Initializing Snake...");
+    snake.length = INITIAL_SNAKE_LENGTH;
+    snake.direction = UP;
+
+    int start_position = 12;
+    for (int i = 0; i < snake.length; i++) {
+        snake.body[i] = start_position + 5*i;
+    }
 }
 
-#else
-#error "unsupported LED type"
-#endif
+void place_food(void)
+{
+    ESP_LOGI(TAG, "Placing Food...");
+    do {
+        food_position = rand() % GRID_SIZE;
+    } while (food_position == snake.body[0]);
+}
+
+void update_leds(void)
+{
+    ESP_LOGI(TAG, "Updating LEDs...");
+    led_strip_clear(led_strip);
+
+    ESP_LOGI(TAG, "Updating Snake LEDs...");
+    for (int i = 0; i < snake.length; i++) {
+        led_strip_set_pixel(led_strip, snake.body[i], 0, 16, 0);
+    }
+
+    ESP_LOGI(TAG, "Updating Food LEDs...");
+    if (food_position >= 0) {
+        led_strip_set_pixel(led_strip, food_position, 16, 0, 0);
+    }
+    led_strip_refresh(led_strip);
+}
+
+bool is_collision(int new_head)
+{
+    ESP_LOGI(TAG, "Checking for Collision...");
+    if (new_head < 0 || new_head >= GRID_SIZE) {
+        return true;
+    }
+    
+    for (int i = 0; i < snake.length; i++) {
+        if (snake.body[i] == new_head) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void move_snake(void)
+{
+    ESP_LOGI(TAG, "Moving Snake...");
+    //calculate new head position
+    int head_row = snake.body[0] / GRID_COLS;
+    int head_col = snake.body[0] % GRID_COLS;
+
+    switch (snake.direction) {
+        case UP:    head_row--; break;
+        case DOWN:  head_row++; break;
+        case LEFT:  head_col--; break;
+        case RIGHT: head_col++; break;
+    }
+
+    int new_head = head_row * GRID_COLS + head_col;
+
+    // check for collision
+    if (is_collision(new_head)) {
+        ESP_LOGI(TAG, "Game Over! Collision detected.");
+        return;
+    }
+
+    // move body
+    for (int i = snake.length - 1; i > 0; i--) {
+        snake.body[i] = snake.body[i - 1];
+    }
+    snake.body[0] = new_head;
+
+    // check for food
+    if (snake.body[0] == food_position) {
+        if (snake.length < GRID_SIZE) {
+            snake.length++;
+        }
+        place_food();
+    }
+}
+
+void change_direction(direction_t turn)
+{
+    ESP_LOGI(TAG, "Changing Direction...");
+    if (turn == LEFT) {
+        switch (snake.direction) {
+            case UP:    snake.direction = LEFT; break;
+            case DOWN:  snake.direction = RIGHT; break;
+            case LEFT:  snake.direction = DOWN; break;
+            case RIGHT: snake.direction = UP; break;
+        }
+        return;
+    }
+    else if (turn == RIGHT) {
+        switch (snake.direction) {
+            case UP:    snake.direction = RIGHT; break;
+            case DOWN:  snake.direction = LEFT; break;
+            case LEFT:  snake.direction = UP; break;
+            case RIGHT: snake.direction = DOWN; break;
+        }
+        return;
+    }
+}
 
 void app_main(void)
 {
 
-    /* Configure the peripheral according to the LED type */
     configure_led();
+    configure_buttons();
+    init_snake();
+    place_food();
 
     while (1) {
-        ESP_LOGI(TAG, "Turning the LED %s!", s_led_state == true ? "ON" : "OFF");
-        blink_led();
-        /* Toggle the LED state */
-        s_led_state = !s_led_state;
+
+        int btn1Level = gpio_get_level(CONFIG_BUTTON1_GPIO);
+        int btn2Level = gpio_get_level(CONFIG_BUTTON2_GPIO);
+
+        if (btn1Level == 0) {
+            change_direction(LEFT);
+        }
+        if (btn2Level == 0) {
+            change_direction(RIGHT);
+        }
+
+        move_snake();
+        update_leds();
+
         vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
     }
 }
