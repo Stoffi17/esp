@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dkzfz/esp/v5.3.1/esp-idf/components/esp_psram
+# Install script for directory: D:/Programme/esp/v5.3.1/esp-idf/components/esp_psram
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

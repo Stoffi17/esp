@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dkzfz/esp/v5.3.1/esp-idf/components/riscv
+# Install script for directory: D:/Programme/esp/v5.3.1/esp-idf/components/riscv
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

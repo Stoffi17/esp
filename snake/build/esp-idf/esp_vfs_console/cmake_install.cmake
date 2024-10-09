@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dkzfz/esp/v5.3.1/esp-idf/components/esp_vfs_console
+# Install script for directory: D:/Programme/esp/v5.3.1/esp-idf/components/esp_vfs_console
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

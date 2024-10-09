@@ -1,4 +1,4 @@
-# Install script for directory: C:/projects/esp/snake/main
+# Install script for directory: D:/Projects/esp/snake/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

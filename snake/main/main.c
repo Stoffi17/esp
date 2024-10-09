@@ -21,6 +21,7 @@ static led_strip_handle_t led_strip;
 #define GRID_ROWS 5
 #define GRID_COLS 5
 #define INITIAL_SNAKE_LENGTH 2
+#define INITIAL_SPEED 8
 
 typedef enum { UP, DOWN, LEFT, RIGHT } direction_t;
 
@@ -32,6 +33,7 @@ typedef struct {
 
 snake_t snake;
 int food_position = -1;
+bool running = false;
 
 void configure_led_strip(void);
 void configure_buttons(void);
@@ -42,13 +44,14 @@ void move_snake(void);
 void change_direction(direction_t turn);
 bool is_collision(int new_head);
 
+
 void configure_led(void)
 {
     ESP_LOGI(TAG, "Configuring LEDs...");
     /* LED strip initialization with the GPIO and pixels number*/
     led_strip_config_t strip_config = {
         .strip_gpio_num = CONFIG_BLINK_GPIO,
-        .max_leds = 1, // at least one LED on board
+        .max_leds = 25,
     };
 #if CONFIG_BLINK_LED_STRIP_BACKEND_RMT
     led_strip_rmt_config_t rmt_config = {
@@ -98,11 +101,8 @@ void init_snake(void)
     ESP_LOGI(TAG, "Initializing Snake...");
     snake.length = INITIAL_SNAKE_LENGTH;
     snake.direction = UP;
-
-    int start_position = 12;
-    for (int i = 0; i < snake.length; i++) {
-        snake.body[i] = start_position + 5*i;
-    }
+    snake.body[0] = 12;
+    snake.body[1] = 17;
 }
 
 void place_food(void)
@@ -120,11 +120,13 @@ void update_leds(void)
 
     ESP_LOGI(TAG, "Updating Snake LEDs...");
     for (int i = 0; i < snake.length; i++) {
+        ESP_LOGI(TAG, "LED: %d", snake.body[i]);
         led_strip_set_pixel(led_strip, snake.body[i], 0, 16, 0);
     }
 
     ESP_LOGI(TAG, "Updating Food LEDs...");
     if (food_position >= 0) {
+        ESP_LOGI(TAG, "LED: %d", food_position);
         led_strip_set_pixel(led_strip, food_position, 16, 0, 0);
     }
     led_strip_refresh(led_strip);
@@ -153,6 +155,8 @@ void move_snake(void)
     int head_row = snake.body[0] / GRID_COLS;
     int head_col = snake.body[0] % GRID_COLS;
 
+    ESP_LOGI(TAG, "Snake Head: %d:%d", head_row, head_col);
+
     switch (snake.direction) {
         case UP:    head_row--; break;
         case DOWN:  head_row++; break;
@@ -168,18 +172,21 @@ void move_snake(void)
         return;
     }
 
-    // move body
-    for (int i = snake.length - 1; i > 0; i--) {
-        snake.body[i] = snake.body[i - 1];
-    }
-    snake.body[0] = new_head;
-
-    // check for food
     if (snake.body[0] == food_position) {
         if (snake.length < GRID_SIZE) {
-            snake.length++;
+            for (int i = snake.length; i > 0; i--) {
+                snake.body[i] = snake.body[i - 1];
+            }
         }
+        snake.body[0] = new_head;
+        snake.length++;
+
         place_food();
+    } else {
+        for (int i = snake.length - 1; i > 0; i--) {
+            snake.body[i] = snake.body[i - 1];
+        }
+        snake.body[0] = new_head;
     }
 }
 
@@ -213,6 +220,18 @@ void app_main(void)
     configure_buttons();
     init_snake();
     place_food();
+    update_leds();
+
+    bool start = false;
+    while (!start) {
+
+        int btn2Level = gpio_get_level(CONFIG_BUTTON2_GPIO);
+        if (btn2Level == 0) {
+            start = true;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 
     while (1) {
 
@@ -229,6 +248,6 @@ void app_main(void)
         move_snake();
         update_leds();
 
-        vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(20000/(INITIAL_SPEED + snake.length)));
     }
 }
