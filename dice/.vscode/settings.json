@@ -7,12 +7,13 @@
         "IDF_CCACHE_ENABLE": "1",
         "ESP_ROM_ELF_DIR": "C:\\Users\\Dkzfz\\.espressif\\tools\\esp-rom-elfs\\20240305/"
     },
-    "idf.espIdfPathWin": "d:\\Programme\\esp\\v5.3.1\\esp-idf",
+    "idf.espIdfPathWin": "C:\\Users\\Dkzfz\\esp\\v5.3.1\\esp-idf",
     "idf.openOcdConfigs": [
         "board/esp32c3-builtin.cfg"
     ],
     "idf.pythonBinPathWin": "C:\\Users\\Dkzfz\\.espressif\\python_env\\idf5.3_py3.11_env\\Scripts\\python.exe",
     "idf.toolsPathWin": "C:\\Users\\Dkzfz\\.espressif",
     "idf.flashType": "UART",
-    "idf.portWin": "COM4"
+    "idf.portWin": "COM3",
+    "idf.gitPathWin": "C:\\Users\\Dkzfz\\.espressif\\tools\\idf-git\\2.39.2\\cmd\\git.exe"
 }

@@ -14,7 +14,5 @@
     "idf.portWin": "COM3",
     "idf.pythonBinPathWin": "C:\\Users\\Dkzfz\\.espressif\\python_env\\idf5.3_py3.11_env\\Scripts\\python.exe",
     "idf.toolsPathWin": "C:\\Users\\Dkzfz\\.espressif",
-    "idf.flashType": "UART",
-    "sonarlint.pathToCompileCommands": "${workspaceFolder}\\build\\compile_commands.json",
-    "C_Cpp.errorSquiggles": "disabled"
+    "idf.flashType": "UART"
 }

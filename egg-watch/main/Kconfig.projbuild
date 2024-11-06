@@ -39,6 +39,12 @@ menu "Example Configuration"
             GPIO number (IOxx) to blink on and off the LED.
             Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to blink.
 
+        config LED_AMOUNT
+            int "LED Amount"
+            default 25
+            help
+                Amount of LEDs on LED Strip.
+
     config BLINK_PERIOD
         int "Blink period in ms"
         range 10 3600000
