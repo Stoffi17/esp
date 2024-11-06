@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dkzfz/esp/v5.3.1/esp-idf/components/newlib
+# Install script for directory: D:/Programme/esp/v5.3.1/esp-idf/components/newlib
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,6 +39,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/projects/esp/snake/build/esp-idf/newlib/port/cmake_install.cmake")
+  include("D:/Projects/esp/snake/build/esp-idf/newlib/port/cmake_install.cmake")
 endif()
 

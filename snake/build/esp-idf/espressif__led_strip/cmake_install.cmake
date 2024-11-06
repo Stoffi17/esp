@@ -1,4 +1,4 @@
-# Install script for directory: C:/projects/esp/snake/managed_components/espressif__led_strip
+# Install script for directory: D:/Projects/esp/snake/managed_components/espressif__led_strip
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
