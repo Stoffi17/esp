@@ -33,7 +33,7 @@ typedef struct {
 snake_t snake;
 int food_position = -1;
 
-void configure_led_strip(void);
+void configure_led(void);
 void configure_buttons(void);
 void init_snake(void);
 void place_food(void);
