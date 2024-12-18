@@ -10,6 +10,7 @@ static const char *TAG = "eieruhr";
 static led_strip_handle_t led_strip;
 
 #define MAX_TIME 15
+#define BRIGHTNESS 64
 
 void configure_led(void);
 void configure_buttons(void);
@@ -69,7 +70,7 @@ void display_set_minutes(int minutes) {
     
     for (int i = 0; i < 15; i++) {
         if (i < minutes) {
-            led_strip_set_pixel(led_strip, i, 0, 16, 0);
+            led_strip_set_pixel(led_strip, i, 0, BRIGHTNESS, 0);
         } else {
             led_strip_set_pixel(led_strip, i, 0, 0, 0);
         }
@@ -86,7 +87,7 @@ void update_led_display(int timer, int total_timer) {
     for (int i = 4; i >= 0; i--) {
         bool bit = (remaining_min >> i) & 0x01;
         if (bit) {
-            led_strip_set_pixel(led_strip, 4 - i, 16, 16, 16);
+            led_strip_set_pixel(led_strip, 4 - i, BRIGHTNESS, BRIGHTNESS, BRIGHTNESS);
         } else {
             led_strip_set_pixel(led_strip, 4 - i, 0, 0, 0);
         }
@@ -95,7 +96,7 @@ void update_led_display(int timer, int total_timer) {
     for (int i = 4; i >= 0; i--) {
         bool bit = (remaining_sec >> i) & 0x01;
         if (bit) {
-            led_strip_set_pixel(led_strip, 9 - i, 0, 0, 16);
+            led_strip_set_pixel(led_strip, 9 - i, 0, 0, BRIGHTNESS);
         } else {
             led_strip_set_pixel(led_strip, 9 - i, 0, 0, 0);
         }
@@ -103,8 +104,8 @@ void update_led_display(int timer, int total_timer) {
 
     int progress = total_timer - timer;
     float progress_ratio = (float)progress / (float)total_timer;
-    int red_intensity = (int)((1.0 - progress_ratio) * 16);
-    int green_intensity = (int)(progress_ratio * 16);
+    int red_intensity = (int)((1.0 - progress_ratio) * BRIGHTNESS);
+    int green_intensity = (int)(progress_ratio * BRIGHTNESS);
 
     for (int i = 15; i < 25; i++) {
         led_strip_set_pixel(led_strip, i, red_intensity, green_intensity, 0);
