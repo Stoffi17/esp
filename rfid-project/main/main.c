@@ -1,15 +1,23 @@
 #include <stdio.h>
-#include <math.h>
+//#include <math.h>
+#include <string.h>
+#include <stdbool.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
+//#include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "esp_log.h"
-#include "esp_system.h"
+//#include "esp_system.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
+
 #include "rc522.h"
 #include "driver/rc522_spi.h"
 #include "rc522_picc.h"
 #include "iot_servo.h"
+
+#include "webserver.h"
 
 static const char *TAG = "rfid_project";
 
@@ -35,6 +43,15 @@ static rc522_spi_config_t driver_config = {
 
 static rc522_driver_handle_t driver;
 static rc522_handle_t scanner;
+
+typedef struct {
+    uint8_t uid[RC522_PICC_UID_SIZE_MAX];
+    uint8_t length;
+} valid_card_t;
+
+static valid_card_t *valid_cards = NULL;
+static size_t valid_cards_count = 0;
+static rc522_picc_uid_t current_uid;
 
 
 /* === Servo Config === */
@@ -82,7 +99,7 @@ uint16_t servo_opened_offset = 0;
 
 
 // Servo Control
-static void servo_open()
+static void servo_open(void)
 {
     ESP_LOGI(TAG, "Opening Servo");
     iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0, calibration_value_180 - 90 + servo_opened_offset);
@@ -103,6 +120,20 @@ static void servo_close_task(void *args)
 
 
 // RFID Control
+static bool is_valid_card(const rc522_picc_t *picc)
+{
+    for (size_t i = 0; i < valid_cards_count; i++)
+    {
+        if (picc->uid.length == valid_cards[i].length &&
+            memcmp(picc->uid.value, valid_cards[i].uid, picc->uid.length) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     rc522_picc_state_changed_event_t *event = (rc522_picc_state_changed_event_t *)data;
@@ -112,12 +143,23 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     {
         rc522_picc_print(picc);
         card_present = true;
-        servo_open();
+        memcpy(current_uid.value, picc->uid.value, picc->uid.length);
+        current_uid.length = picc->uid.length;
+        if (is_valid_card(picc)) 
+        {
+            ESP_LOGI(TAG, "Card is valid");
+            valid_card_present = true;
+            servo_open();
+        } else 
+        {
+            ESP_LOGI(TAG, "Card is not valid");
+        }
     }
     else if (picc->state == RC522_PICC_STATE_IDLE && event->old_state >= RC522_PICC_STATE_ACTIVE) 
     {
         ESP_LOGI(TAG, "Card has been removed");
         card_present = false;
+        valid_card_present = false;
         if (!servo_reset_pending) 
         {
             servo_reset_pending = true;
@@ -126,9 +168,58 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     }
 }
 
+void add_card(void)
+{
+    // check if card can be added
+    if (!card_present)
+    {
+        ESP_LOGI(TAG, "No card available.");
+        return;
+    } else if (valid_card_present)
+    {
+        ESP_LOGI(TAG, "Card already valid.");
+        return;
+    }
+
+    // change array size
+    valid_card_t *new_array = realloc(valid_cards, (valid_cards_count + 1) * sizeof(valid_card_t));
+    if (new_array == NULL) 
+    {
+        ESP_LOGE(TAG, "Memory allocation failed!");
+        return;
+    }
+    valid_cards = new_array;
+
+    // add card
+    memcpy(valid_cards[valid_cards_count].uid, current_uid.value, current_uid.length);
+    valid_cards[valid_cards_count].length = current_uid.length;
+    valid_cards_count++;
+
+    ESP_LOGI(TAG, "New card added successfully!");
+}
+
+static void init_valid_cards(void)
+{
+    static const uint8_t init_uid[] = { 0xE3, 0x59, 0x28, 0xF7 };
+    size_t init_length = sizeof(init_uid);
+
+    valid_cards = malloc(sizeof(valid_card_t));
+    if (valid_cards == NULL)
+    {
+        ESP_LOGE(TAG, "Memory allocation failed!");
+        return;
+    }
+
+    memcpy(valid_cards[0].uid, init_uid, init_length);
+    valid_cards[0].length = init_length;
+    valid_cards_count = 1;
+}
+
 
 void app_main()
 {
+    init_valid_cards();
+
     // Init Servo
     servo_init();
 
@@ -143,4 +234,17 @@ void app_main()
     rc522_create(&scanner_config, &scanner);
     rc522_register_events(scanner, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
     rc522_start(scanner);
+
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
+    // Starte den Webserver
+    if (start_webserver() == ESP_OK) {
+        ESP_LOGI("Main", "Webserver erfolgreich gestartet");
+    } else {
+        ESP_LOGE("Main", "Fehler beim Starten des Webservers");
+    }
 }
