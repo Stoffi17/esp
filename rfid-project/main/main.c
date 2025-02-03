@@ -1,15 +1,13 @@
 #include <stdio.h>
-//#include <math.h>
 #include <string.h>
 #include <stdbool.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-//#include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "esp_log.h"
-//#include "esp_system.h"
 #include "esp_event.h"
+#include "esp_err.h"
 #include "nvs_flash.h"
 
 #include "rc522.h"
@@ -17,6 +15,7 @@
 #include "rc522_picc.h"
 #include "iot_servo.h"
 
+#include "tags.h"
 #include "webserver.h"
 
 static const char *TAG = "rfid_project";
@@ -44,13 +43,9 @@ static rc522_spi_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t scanner;
 
-typedef struct {
-    uint8_t uid[RC522_PICC_UID_SIZE_MAX];
-    uint8_t length;
-} valid_card_t;
+valid_tag_t *valid_tags = NULL;
+size_t valid_tags_count = 0;
 
-static valid_card_t *valid_cards = NULL;
-static size_t valid_cards_count = 0;
 static rc522_picc_uid_t current_uid;
 
 
@@ -89,8 +84,8 @@ static void servo_init(void)
 
 
 /* === Global Variables === */
-volatile bool card_present = false;
-volatile bool valid_card_present = false;
+volatile bool tag_present = false;
+volatile bool valid_tag_present = false;
 volatile bool servo_reset_pending = false;
 volatile bool door_locked = false;
 uint32_t servo_close_delay_ms = 1000;
@@ -99,33 +94,51 @@ uint16_t servo_opened_offset = 0;
 
 
 // Servo Control
-static void servo_open(void)
+void servo_open(void)
 {
     ESP_LOGI(TAG, "Opening Servo");
     iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0, calibration_value_180 - 90 + servo_opened_offset);
 }
 
-static void servo_close_task(void *args)
+void servo_close(void)
 {
     ESP_LOGI(TAG, "Closing Servo");
+    iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0, calibration_value_0 + servo_closed_offset);
+}
+
+static void servo_close_task(void *args)
+{
+    servo_reset_pending = true;
     vTaskDelay(servo_close_delay_ms / portTICK_PERIOD_MS);
 
-    if(!card_present)
+    if(!tag_present)
     {
-        iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0, calibration_value_0 + servo_closed_offset);
+        servo_close();
     }
     servo_reset_pending = false;
     vTaskDelete(NULL);
 }
 
+void toggle_lock(void)
+{
+    if (door_locked) {
+        door_locked = false;
+        ESP_LOGI(TAG, "Door unlocked");
+    } else {
+        servo_close();
+        door_locked = true;
+        ESP_LOGI(TAG, "Door locked");
+    }
+}
+
 
 // RFID Control
-static bool is_valid_card(const rc522_picc_t *picc)
+static bool is_valid_tag(const rc522_picc_t *picc)
 {
-    for (size_t i = 0; i < valid_cards_count; i++)
+    for (size_t i = 0; i < valid_tags_count; i++)
     {
-        if (picc->uid.length == valid_cards[i].length &&
-            memcmp(picc->uid.value, valid_cards[i].uid, picc->uid.length) == 0)
+        if (picc->uid.length == valid_tags[i].length &&
+            memcmp(picc->uid.value, valid_tags[i].uid, picc->uid.length) == 0)
         {
             return true;
         }
@@ -142,83 +155,134 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     if (picc->state == RC522_PICC_STATE_ACTIVE) 
     {
         rc522_picc_print(picc);
-        card_present = true;
+        tag_present = true;
         memcpy(current_uid.value, picc->uid.value, picc->uid.length);
         current_uid.length = picc->uid.length;
-        if (is_valid_card(picc)) 
+        if (is_valid_tag(picc)) 
         {
-            ESP_LOGI(TAG, "Card is valid");
-            valid_card_present = true;
-            servo_open();
+            ESP_LOGI(TAG, "Tag is valid");
+            valid_tag_present = true;
+            if (!door_locked)
+            {
+                servo_open();
+            }
         } else 
         {
-            ESP_LOGI(TAG, "Card is not valid");
+            ESP_LOGI(TAG, "Tag is not valid");
         }
     }
     else if (picc->state == RC522_PICC_STATE_IDLE && event->old_state >= RC522_PICC_STATE_ACTIVE) 
     {
-        ESP_LOGI(TAG, "Card has been removed");
-        card_present = false;
-        valid_card_present = false;
-        if (!servo_reset_pending) 
+        ESP_LOGI(TAG, "Tag has been removed");
+        tag_present = false;
+        valid_tag_present = false;
+        if (!servo_reset_pending && !door_locked) 
         {
-            servo_reset_pending = true;
             xTaskCreate(servo_close_task, "servo_close_task", 2048, NULL, 5, NULL);
         }
     }
 }
 
-void add_card(void)
+esp_err_t add_tag(const char *tag_name)
 {
-    // check if card can be added
-    if (!card_present)
+    // check if tag can be added
+    if (!tag_present)
     {
-        ESP_LOGI(TAG, "No card available.");
-        return;
-    } else if (valid_card_present)
+        ESP_LOGI(TAG, "No tag available.");
+        return ESP_ERR_INVALID_STATE;
+    } 
+    else if (valid_tag_present)
     {
-        ESP_LOGI(TAG, "Card already valid.");
-        return;
+        ESP_LOGI(TAG, "Tag already valid.");
+        return ESP_ERR_INVALID_STATE;
     }
 
     // change array size
-    valid_card_t *new_array = realloc(valid_cards, (valid_cards_count + 1) * sizeof(valid_card_t));
+    valid_tag_t *new_array = realloc(valid_tags, (valid_tags_count + 1) * sizeof(valid_tag_t));
     if (new_array == NULL) 
     {
         ESP_LOGE(TAG, "Memory allocation failed!");
-        return;
+        return ESP_ERR_NO_MEM;
     }
-    valid_cards = new_array;
+    valid_tags = new_array;
 
-    // add card
-    memcpy(valid_cards[valid_cards_count].uid, current_uid.value, current_uid.length);
-    valid_cards[valid_cards_count].length = current_uid.length;
-    valid_cards_count++;
+    // add tag
+    memcpy(valid_tags[valid_tags_count].uid, current_uid.value, current_uid.length);
+    valid_tags[valid_tags_count].length = current_uid.length;
+    strncpy(valid_tags[valid_tags_count].name, tag_name, sizeof(valid_tags[valid_tags_count].name));
+    valid_tags[valid_tags_count].name[sizeof(valid_tags[valid_tags_count].name) - 1] = '\0';
 
-    ESP_LOGI(TAG, "New card added successfully!");
+    valid_tags_count++;
+
+    ESP_LOGI(TAG, "New tag added successfully!");
+    return ESP_OK;
 }
 
-static void init_valid_cards(void)
+esp_err_t remove_tag(const uint8_t *uid, uint8_t uid_length)
+{
+    for (size_t i = 0; i < valid_tags_count; i++)
+    {
+        // find tag
+        if (valid_tags[i].length == uid_length &&
+            memcmp(valid_tags[i].uid, uid, uid_length) == 0)
+        {
+            // move tags forward
+            for (size_t j = i; j < valid_tags_count - 1; j++)
+            {
+                valid_tags[j] = valid_tags[j + 1];
+            }
+            valid_tags_count--;
+
+            // Shrink array
+            if (valid_tags_count > 0)
+            {
+                valid_tag_t *new_array = realloc(valid_tags, valid_tags_count * sizeof(valid_tag_t));
+                if (new_array == NULL)
+                {
+                    ESP_LOGE(TAG, "Memory allocation failed!");
+                    return ESP_ERR_NO_MEM;
+                }
+                valid_tags = new_array;
+            }
+            else
+            {
+                free(valid_tags);
+                valid_tags = NULL;
+            }
+
+            ESP_LOGI(TAG, "Tag removed successfully!");
+            return ESP_OK;
+        }
+    }
+    ESP_LOGW(TAG, "Tag not found");
+    return ESP_ERR_NOT_FOUND;
+}
+
+
+static void init_valid_tags(void)
 {
     static const uint8_t init_uid[] = { 0xE3, 0x59, 0x28, 0xF7 };
     size_t init_length = sizeof(init_uid);
 
-    valid_cards = malloc(sizeof(valid_card_t));
-    if (valid_cards == NULL)
+    valid_tags = malloc(sizeof(valid_tag_t));
+    if (valid_tags == NULL)
     {
         ESP_LOGE(TAG, "Memory allocation failed!");
         return;
     }
 
-    memcpy(valid_cards[0].uid, init_uid, init_length);
-    valid_cards[0].length = init_length;
-    valid_cards_count = 1;
+    memcpy(valid_tags[0].uid, init_uid, init_length);
+    valid_tags[0].length = init_length;
+    strncpy(valid_tags[0].name, "Chica", sizeof(valid_tags[0].name));
+    valid_tags[0].name[sizeof(valid_tags[0].name) - 1] = '\0';
+
+    valid_tags_count = 1;
 }
 
 
 void app_main()
 {
-    init_valid_cards();
+    init_valid_tags();
 
     // Init Servo
     servo_init();
@@ -241,7 +305,7 @@ void app_main()
         nvs_flash_init();
     }
 
-    // Starte den Webserver
+    // Start Webserver
     if (start_webserver() == ESP_OK) {
         ESP_LOGI("Main", "Webserver erfolgreich gestartet");
     } else {
