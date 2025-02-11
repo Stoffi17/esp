@@ -1,32 +1,26 @@
-# _Sample project_
+# Cat Door Manager 3000
+Mit dieser Applikation kann eine Katzenklappe gesteuert werden, sowie die Eintritte mit RFID Tags gesteuert werden.
+Beim Start des ESP wird ein Wlan aufgebaut. Um das WebGUI zu nutzen muss sich mit diesem verbunden werden.
+SSID: ESP32-AP
+Passwort: 12345678
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+## Components
+RC522 RFID Reader; abobija_rc522
+Microservo SG90; espressif_servo
+Wifi; esp_wifi
+Webserver; esp_http_server
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## Code
+### Main.c
+Konfiguration von Servo und RFID Reader.
+Initialisierung der Komponenten und Starten des Webservers.
+Logik für die Zugangssteuerung.
 
+### Webserver.c
+Konfiguration des Wlan AP und Webserver.
+Erstellen der Pages und registrieren der URIs.
+Kommunikation zwischen Webserver und Main funktioniert über API Endpoints.
 
-
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
-
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+### Tags.h
+Enthält ein Struct um einen Tag mit UUID und Namen zu speichern, sowie ein Array für die Valid Tags.
+Enthält zusätzlich die nötigen Funktionsdeklarationen und Variablen für die Kommunikation zwischen Webserver.c und Main.c.
