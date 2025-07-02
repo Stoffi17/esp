@@ -8,13 +8,13 @@ SHTC3 Temperatur- und Luftfeuchtigkeitssensor
 
 
 ## Code
-### Main.c
+### main.c
 Initialisierung aller Components und Erstellen der Tasks zum auslesen und senden der Daten.
 
-### Wifi.c
-Implementation der Wifi Connection.
+### wifi.c
+Implementation der Wifi Connection. Hier muss noch SSID und Passwort gesetzt werden.
 
-### MQTT.c
+### mqtt.c
 Implementation des MQTT.
 
 ### sensors/*
