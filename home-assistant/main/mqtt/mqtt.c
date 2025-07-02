@@ -6,11 +6,13 @@
 static const char *TAG = "mqtt";
 static esp_mqtt_client_handle_t client = NULL;
 
-#define MQTT_BROKER_URI "mqtt://192.168.0.126:1883"
-#define MQTT_USERNAME "homeassistant"
-#define MQTT_PASSWORD "MyBrokerPassword"
+#define MQTT_BROKER_URI     "mqtt://192.168.137.252:1883"
+#define MQTT_USERNAME       "mqtt"
+#define MQTT_PASSWORD       "Mqtt1234"
 
-static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
+static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    esp_mqtt_event_handle_t event = event_data;
+
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT connected");
@@ -27,8 +29,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
         default:
             break;
     }
-    return ESP_OK;
 }
+
 
 esp_err_t mqtt_app_start(void) {
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -42,12 +44,7 @@ esp_err_t mqtt_app_start(void) {
         return ESP_FAIL;
     }
 
-    esp_mqtt_client_register_event(
-        client,
-        ESP_EVENT_ANY_ID,
-        mqtt_event_handler_cb,
-        NULL
-    );
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_cb, NULL);
 
     esp_err_t err = esp_mqtt_client_start(client);
     return err;

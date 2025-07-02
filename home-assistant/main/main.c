@@ -66,7 +66,7 @@ void app_main(void)
 {
     // Init
     wifi_init_sta();
-    esp_err_t mqtt_app_start();
+    mqtt_app_start();
     i2c_master_init();
     spi_icm_init();
     icm_init();

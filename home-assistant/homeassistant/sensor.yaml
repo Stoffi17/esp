@@ -1,0 +1,25 @@
+mqtt:
+  sensor:
+    - name: "Acceleration X"
+      state_topic: "home/cke/sensors/acceleration"
+      unit_of_measurement: "g"
+      value_template: "{{ value_json.x }}"
+      device_class: speed
+      state_class: measurement
+      force_update: true
+
+    - name: "Acceleration Y"
+      state_topic: "home/cke/sensors/acceleration"
+      unit_of_measurement: "g"
+      value_template: "{{ value_json.y }}"
+      device_class: speed
+      state_class: measurement
+      force_update: true
+
+    - name: "Acceleration Z"
+      state_topic: "home/cke/sensors/acceleration"
+      unit_of_measurement: "g"
+      value_template: "{{ value_json.z }}"
+      device_class: speed
+      state_class: measurement
+      force_update: true

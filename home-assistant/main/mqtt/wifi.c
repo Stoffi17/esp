@@ -11,8 +11,8 @@ static const char *TAG = "wifi";
 static EventGroupHandle_t s_wifi_event_group;
 
 #define WIFI_CONNECTED_BIT BIT0
-#define WIFI_SSID "cermit"
-#define WIFI_PASS "W3dT4!eb48?DiZ"
+#define WIFI_SSID "LaptopHS"
+#define WIFI_PASS "Test123456"
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)

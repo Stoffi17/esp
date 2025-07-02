@@ -1,5 +1,5 @@
 /*
-    Temparatur- und Luftfeuchtigkeitssensor
+    Temperatur- und Luftfeuchtigkeitssensor
 */
 
 #include "icm42688p.h"

@@ -11,7 +11,7 @@
 #define I2C_MASTER_SDA_IO   5
 #define I2C_MASTER_SCL_IO   6
 #define I2C_MASTER_FREQ_HZ  100000
-#define SHTC3_ADDR 0x70
+#define SHTC3_ADDR          0x70
 
 void i2c_master_init() {
     i2c_config_t conf = {
