@@ -1,5 +1,5 @@
 /*
-    Temperatur- und Luftfeuchtigkeitssensor
+    Beschleunigungssensor
 */
 
 #include "icm42688p.h"

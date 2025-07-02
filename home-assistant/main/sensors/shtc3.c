@@ -1,5 +1,5 @@
 /*
-    Beschleunigungssensor
+    Temperatur- und Luftfeuchtigkeitssensor
 */
 
 #include "shtc3.h"
